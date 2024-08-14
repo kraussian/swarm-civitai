@@ -1,3 +1,4 @@
 {
-    "model_folder": "C:/sd/SwarmUI/Models/unet"
+    "model_folder": "C:/sd/models/Stable-Diffusion",
+    "unet_model_folder": "C:/sd/models/unet"
 }

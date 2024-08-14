@@ -9,30 +9,45 @@ from   PIL.PngImagePlugin import PngInfo
 # Define Sampler/Scheduler Information
 # Need to be updated whenever new Samplers are added to InvokeAI
 sampler_info = {
-    'euler': {'name': 'Euler', 'type': 'Automatic'},
-    'deis': {'name': 'DEIS', 'type': 'Automatic'},
-    'ddim': {'name': 'DDIM', 'type': 'Automatic'},
-    'ddpm': {'name': 'DDPM', 'type': 'Automatic'},
-    'dpmpp_sde': {'name': 'DPM++ SDE', 'type': 'Automatic'},
-    'dpmpp_2s': {'name': 'DPM++ 2S', 'type': 'Automatic'},
-    'dpmpp_2m': {'name': 'DPM++ 2M', 'type': 'Automatic'},
-    'dpmpp_2m_sde': {'name': 'DPM++ 2M SDE', 'type': 'Automatic'},
-    'heun': {'name': 'Heun', 'type': 'Automatic'},
-    'kdpm_2': {'name': 'KDPM 2', 'type': 'Automatic'},
-    'lms': {'name': 'LMS', 'type': 'Automatic'},
-    'pndm': {'name': 'PNDM', 'type': 'Automatic'},
-    'unipc': {'name': 'UniPC', 'type': 'Automatic'},
-    'euler_k': {'name': 'Euler', 'type': 'Karras'},
-    'dpmpp_sde_k': {'name': 'DPM++ SDE', 'type': 'Karras'},
-    'dpmpp_2s_k': {'name': 'DPM++ 2S', 'type': 'Karras'},
-    'dpmpp_2m_k': {'name': 'DPM++ 2M', 'type': 'Karras'},
-    'dpmpp_2m_sde_k': {'name': 'DPM++ 2M SDE', 'type': 'Karras'},
-    'heun_k': {'name': 'Heun', 'type': 'Karras'},
-    'lms_k': {'name': 'LMS Karras', 'type': 'Karras'},
-    'euler_a': {'name': 'Euler a', 'type': 'Automatic'},
-    'kdpm_2_a': {'name': 'KDPM 2a', 'type': 'Automatic'},
-    'lcm': {'name': 'LCM', 'type': 'Automatic'},
-    'tcd': {'name': 'TCD', 'type': 'Automatic'}
+    "euler": "Euler",
+    "euler_ancestral": "Euler Ancestral (Randomizing)",
+    "heun": "Heun",
+    "heunpp2": "Heun++ 2",
+    "dpm_2": "DPM-2 (Diffusion Probabilistic Model)",
+    "dpm_2_ancestral": "DPM-2 Ancestral",
+    "lms": "LMS (Linear Multi-Step)",
+    "dpm_fast": "DPM Fast (DPM without the DPM2 slowdown)",
+    "dpm_adaptive": "DPM Adaptive (Dynamic Steps)",
+    "dpmpp_2s_ancestral": "DPM++ 2S Ancestral (2nd Order Single-Step)",
+    "dpmpp_sde": "DPM++ SDE (Stochastic / randomizing)",
+    "dpmpp_sde_gpu": "DPM++ SDE, GPU Seeded",
+    "dpmpp_2m": "DPM++ 2M (2nd Order Multi-Step)",
+    "dpmpp_2m_sde": "DPM++ 2M SDE",
+    "dpmpp_2m_sde_gpu": "DPM++ 2M SDE, GPU Seeded",
+    "dpmpp_3m_sde": "DPM++ 3M SDE (3rd Order Multi-Step)",
+    "dpmpp_3m_sde_gpu": "DPM++ 3M SDE, GPU Seeded",
+    "ddim": "DDIM (Denoising Diffusion Implicit Models)",
+    "ddpm": "DDPM (Denoising Diffusion Probabilistic Models)",
+    "lcm": "LCM (for LCM models)",
+    "uni_pc": "UniPC (Unified Predictor-Corrector)",
+    "uni_pc_bh2": "UniPC BH2",
+    "euler_cfg_pp": "Euler CFG++ (Manifold-constrained CFG)",
+    "euler_ancestral_cfg_pp": "Euler Ancestral CFG++",
+    "ipndm": "iPNDM (Improved Pseudo-Numerical methods for Diffusion Models)",
+    "ipndm_v": "iPNDM-V (Variable-Step)",
+    "deis": "DEIS (Diffusion Exponential Integrator Sampler)"
+}
+
+scheduler_info = {
+    "normal": "Normal",
+    "karras": "Karras",
+    "exponential": "Exponential",
+    "simple": "Simple",
+    "ddim_uniform": "DDIM Uniform",
+    "sgm_uniform": "SGM Uniform",
+    "turbo": "Turbo (for turbo models)",
+    "align_your_steps": "Align Your Steps (NVIDIA)",
+    "beta": "Beta"
 }
 
 def save_model_hash(basename:str, model_hash:str, hash_cache:Any) -> None:
@@ -103,29 +118,35 @@ def main() -> None:
         if 'negativeprompt' in json_data.keys():
             meta_negative = '\nNegative prompt: ' + json_data['negativeprompt']
         meta_steps = '\nSteps: ' + str(json_data['steps'])
+        if 'sampler' in json_data.keys():
+            meta_sampler = 'Sampler: ' + sampler_info[json_data['sampler']]
+        else:
+            meta_sampler = ''
+        if 'scheduler' in json_data.keys():
+            meta_scheduler = 'Schedule type: ' + scheduler_info[json_data['scheduler']]
+        else:
+            meta_scheduler = ''
         meta_cfg = 'CFG scale: ' + str(json_data['cfgscale'])
         meta_seed = 'Seed: ' + str(json_data['seed'])
         meta_size = 'Size: ' + str(json_data['width']) + 'x' + str(json_data['height'])
         meta_mname = 'Model: ' + json_data['model']
 
         # Build metadata for checkpoint model
-        if 'hash' in json_data.keys():
-            model_hash = json_data['hash']
-            meta_mhash = 'Model hash: ' + model_hash
-            save_model_hash(f"{json_data['model']['name']}.safetensors", model_hash, hash_cache)
+        if 'flux' in meta_mname:
+            model_folder = 'unet_model_folder'
         else:
-            print("        Model hash not found! Attempting to calculate hash from model file", flush=True)
-            if 'model_folder' in swarmui_cfg:
-                model_hash = calculate_shorthash(f"{swarmui_cfg['model_folder']}/{json_data['model']}.safetensors", hash_cache)
-                if model_hash != "NOFILE":
-                    meta_mhash = 'Model hash: ' + model_hash
-                else:
-                    print("        ERROR: Model file not found! Skipping file...", flush=True)
-                    continue
+            model_folder = 'model_folder'
+        if model_folder in swarmui_cfg:
+            model_hash = calculate_shorthash(f"{swarmui_cfg[model_folder]}/{json_data['model']}.safetensors", hash_cache)
+            if model_hash != "NOFILE":
+                meta_mhash = 'Model hash: ' + model_hash
             else:
-                print("        ERROR: Model folder not configured in swarmui_cfg.json! Skipping file...", flush=True)
+                print("        ERROR: Model file not found! Skipping file...", flush=True)
                 continue
-        meta_params = [meta_steps, meta_cfg, meta_seed, meta_size, meta_mhash, meta_mname]
+        else:
+            print("        ERROR: Model folder not configured in swarmui_cfg.json! Skipping file...", flush=True)
+            continue
+        meta_params = [meta_steps, meta_sampler, meta_scheduler, meta_cfg, meta_seed, meta_size, meta_mhash, meta_mname]
 
         meta_version = 'Version: v1.9.4' # Hard-code to imitate Automatic1111
         meta_params.append(meta_version)
