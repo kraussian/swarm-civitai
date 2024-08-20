@@ -148,6 +148,25 @@ def main() -> None:
             continue
         meta_params = [meta_steps, meta_sampler, meta_scheduler, meta_cfg, meta_seed, meta_size, meta_mhash, meta_mname]
 
+        # Build metadata for LoRA model
+        if 'loras' in json_data.keys():
+            meta_lora = 'Lora hashes: "'
+            for idx, lora in enumerate(json_data['loras']):
+                if 'lora_folder' in swarmui_cfg:
+                    lora_hash = calculate_shorthash(f"{swarmui_cfg['lora_folder']}/{lora}.safetensors", hash_cache)
+                    if lora_hash == "NOFILE":
+                        print("        ERROR: Model file not found! Skipping file...", flush=True)
+                        continue
+                else:
+                    print("        ERROR: Model folder not configured in swarmui_cfg.json! Skipping file...", flush=True)
+                    continue
+                meta_lora += lora + ': ' + lora_hash
+                meta_positive += ' <lora:' + lora + ':' + str(json_data['loraweights'][idx]) + '>'
+                if idx < len(json_data['loras']) - 1:
+                    meta_lora += ', '
+            meta_lora += '"'
+            meta_params.append(meta_lora)
+
         meta_version = 'Version: v1.9.4' # Hard-code to imitate Automatic1111
         meta_params.append(meta_version)
         meta_final = meta_positive + meta_negative + ', '.join(meta_params)

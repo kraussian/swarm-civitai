@@ -1,4 +1,5 @@
 {
     "model_folder": "C:/sd/models/Stable-Diffusion",
-    "unet_model_folder": "C:/sd/models/unet"
+    "unet_model_folder": "C:/sd/models/unet",
+    "lora_folder": "C:/sd/models/LoRA"
 }
